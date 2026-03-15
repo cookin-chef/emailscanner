@@ -315,29 +315,37 @@ def _run_scan_for_user(user):
     scan = ScanHistory(user_id=user.id, status='pending')
 
     try:
+        print(f'[scan:{user.email}] building Gmail service')
         gmail_service = build_gmail_service(user)
         db.session.add(user)  # persist refreshed token
 
+        print(f'[scan:{user.email}] fetching school emails (lookback={config.lookback_days}d)')
         emails = fetch_school_emails(
             gmail_service,
             config.sender_emails,
             config.sender_domains,
             config.lookback_days,
         )
+        print(f'[scan:{user.email}] found {len(emails)} email(s)')
 
         if not emails:
             scan.status = 'no_emails'
             scan.emails_found = 0
             return scan
 
+        print(f'[scan:{user.email}] enriching emails (URLs + PDFs)')
         enriched = enrich_emails(emails, config.trusted_domains, gmail_service)
 
         urls_fetched = sum(len(e['url_contents']) for e in enriched)
         pdfs_parsed = sum(len(e['pdf_contents']) for e in enriched)
+        print(f'[scan:{user.email}] enriched: {urls_fetched} URL(s), {pdfs_parsed} PDF(s)')
 
+        print(f'[scan:{user.email}] summarizing with Claude')
         anthropic_key = decrypt(config._anthropic_key)
         summary = summarize_emails(enriched, anthropic_key)
+        print(f'[scan:{user.email}] summary done ({len(summary)} chars)')
 
+        print(f'[scan:{user.email}] sending digest to {config.dest_email}')
         smtp_password = decrypt(config._smtp_password)
         send_digest(
             summary_text=summary,
@@ -348,6 +356,7 @@ def _run_scan_for_user(user):
             smtp_password=smtp_password,
             school_email=user.email,
         )
+        print(f'[scan:{user.email}] digest sent successfully')
 
         scan.status = 'success'
         scan.emails_found = len(emails)
@@ -356,9 +365,11 @@ def _run_scan_for_user(user):
         scan.summary = summary
 
     except Exception as e:
+        import traceback
+        print(f'[scan:{user.email}] ERROR: {e}')
+        print(traceback.format_exc())
         scan.status = 'error'
         scan.error_message = str(e)
-        print(f'Scan error for {user.email}: {e}')
 
     return scan
 
