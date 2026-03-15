@@ -11,11 +11,13 @@ from flask import (Flask, redirect, render_template, request,
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from models import db, User, UserConfig, ScanHistory
 from crypto_utils import encrypt, decrypt
 
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 app.secret_key = os.environ['SECRET_KEY']
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///emailscanner.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
