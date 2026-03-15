@@ -32,6 +32,7 @@ SCOPES = [
     'https://www.googleapis.com/auth/userinfo.email',
     'https://www.googleapis.com/auth/userinfo.profile',
     'https://www.googleapis.com/auth/gmail.readonly',
+    'https://www.googleapis.com/auth/gmail.send',
 ]
 
 
@@ -268,7 +269,11 @@ def run_scan_now():
     elif scan.status == 'no_emails':
         flash('Scan complete — no school emails found in the selected time window.', 'info')
     else:
-        flash(f'Scan encountered an error: {scan.error_message}', 'danger')
+        err = scan.error_message or ''
+        if 'insufficient' in err.lower() or 'forbidden' in err.lower() or '403' in err:
+            flash('Permission error: please sign out and sign back in to grant the updated permissions.', 'danger')
+        else:
+            flash(f'Scan encountered an error: {err}', 'danger')
 
     return redirect(url_for('dashboard'))
 
@@ -346,15 +351,11 @@ def _run_scan_for_user(user):
         print(f'[scan:{user.email}] summary done ({len(summary)} chars)')
 
         print(f'[scan:{user.email}] sending digest to {config.dest_email}')
-        smtp_password = decrypt(config._smtp_password)
         send_digest(
             summary_text=summary,
             dest_email=config.dest_email,
-            smtp_host=config.smtp_host,
-            smtp_port=config.smtp_port,
-            smtp_user=config.smtp_user,
-            smtp_password=smtp_password,
             school_email=user.email,
+            gmail_service=gmail_service,
         )
         print(f'[scan:{user.email}] digest sent successfully')
 

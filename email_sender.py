@@ -1,5 +1,4 @@
-import smtplib
-import socket
+import base64
 import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -33,30 +32,23 @@ def _summary_to_html(summary_text):
 </html>"""
 
 
-def send_digest(summary_text, dest_email, smtp_host, smtp_port, smtp_user, smtp_password, school_email):
-    """Send the weekly summary digest via SMTP."""
+def send_digest(summary_text, dest_email, school_email, gmail_service):
+    """Send the weekly summary digest via Gmail API (avoids SMTP port restrictions)."""
     today = datetime.date.today()
     subject = f"📚 School Week Digest — {today.strftime('%B %d, %Y')}"
 
     msg = MIMEMultipart('alternative')
     msg['Subject'] = subject
-    msg['From'] = f'School Digest <{smtp_user}>'
+    msg['From'] = f'School Digest <{school_email}>'
     msg['To'] = dest_email
 
-    # Plain text fallback
     plain = MIMEText(summary_text, 'plain', 'utf-8')
-    # HTML version
     html = MIMEText(_summary_to_html(summary_text), 'html', 'utf-8')
-
     msg.attach(plain)
     msg.attach(html)
 
-    # Force IPv4 — some cloud hosts have no IPv6 route and get ENETUNREACH
-    infos = socket.getaddrinfo(smtp_host, smtp_port, socket.AF_INET, socket.SOCK_STREAM)
-    smtp_ip = infos[0][4][0]
-
-    with smtplib.SMTP(smtp_ip, smtp_port) as server:
-        server.ehlo()
-        server.starttls()
-        server.login(smtp_user, smtp_password)
-        server.sendmail(smtp_user, [dest_email], msg.as_string())
+    raw = base64.urlsafe_b64encode(msg.as_bytes()).decode('utf-8')
+    gmail_service.users().messages().send(
+        userId='me',
+        body={'raw': raw},
+    ).execute()
