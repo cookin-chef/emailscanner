@@ -1,4 +1,5 @@
 import smtplib
+import socket
 import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -50,7 +51,11 @@ def send_digest(summary_text, dest_email, smtp_host, smtp_port, smtp_user, smtp_
     msg.attach(plain)
     msg.attach(html)
 
-    with smtplib.SMTP(smtp_host, smtp_port) as server:
+    # Force IPv4 — some cloud hosts have no IPv6 route and get ENETUNREACH
+    infos = socket.getaddrinfo(smtp_host, smtp_port, socket.AF_INET, socket.SOCK_STREAM)
+    smtp_ip = infos[0][4][0]
+
+    with smtplib.SMTP(smtp_ip, smtp_port) as server:
         server.ehlo()
         server.starttls()
         server.login(smtp_user, smtp_password)
