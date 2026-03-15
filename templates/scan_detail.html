@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}Scan Summary — School Email Digest{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-3 mb-4">
+  <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Back
+  </a>
+  <div>
+    <h5 class="fw-bold mb-0">Weekly Summary</h5>
+    <small class="text-muted">
+      Scanned on {{ scan.scanned_at.strftime('%A, %B %d, %Y at %I:%M %p') }} —
+      {{ scan.emails_found }} email(s), {{ scan.urls_fetched or 0 }} URL(s), {{ scan.pdfs_parsed or 0 }} PDF(s)
+    </small>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <div class="summary-body">{{ scan.summary }}</div>
+  </div>
+</div>
+{% endblock %}
