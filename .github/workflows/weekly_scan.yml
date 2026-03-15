@@ -1,0 +1,32 @@
+name: Weekly School Email Scan
+
+on:
+  schedule:
+    # Every Saturday at 8:00 AM UTC
+    - cron: '0 8 * * 6'
+  workflow_dispatch:
+    # Allow manual trigger from GitHub Actions UI
+
+jobs:
+  trigger-scan:
+    name: Trigger Weekly Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install requests
+        run: pip install requests
+
+      - name: Trigger scan on deployed app
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          SCAN_SECRET: ${{ secrets.SCAN_SECRET }}
+        run: python run_scan.py

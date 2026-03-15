@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard — School Email Digest{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h4 class="fw-bold mb-0">Dashboard</h4>
+    <p class="text-muted mb-0 small">
+      Scanning: <strong>{{ user.email }}</strong>
+      <span class="badge bg-success-subtle text-success border border-success-subtle ms-1">
+        <i class="bi bi-shield-lock me-1"></i>Read-only
+      </span>
+    </p>
+  </div>
+  <div class="d-flex gap-2">
+    {% if config_complete %}
+    <form action="{{ url_for('run_scan_now') }}" method="POST">
+      <button type="submit" class="btn btn-primary">
+        <i class="bi bi-play-circle me-1"></i>Run Now
+      </button>
+    </form>
+    {% else %}
+    <a href="{{ url_for('admin') }}" class="btn btn-warning">
+      <i class="bi bi-exclamation-triangle me-1"></i>Complete Setup
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+{% if not config_complete %}
+<div class="alert alert-warning">
+  <i class="bi bi-gear me-2"></i>
+  Your settings are incomplete. <a href="{{ url_for('admin') }}">Go to Settings</a> to finish setup.
+</div>
+{% endif %}
+
+<!-- Stats row -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card text-center py-3">
+      <div class="fs-2 fw-bold text-primary">{{ scans|length }}</div>
+      <div class="text-muted small">Total Scans</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center py-3">
+      <div class="fs-2 fw-bold text-success">{{ scans|selectattr('status','eq','success')|list|length }}</div>
+      <div class="text-muted small">Successful</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center py-3">
+      <div class="fs-2 fw-bold text-info">{{ scans|map(attribute='emails_found')|sum }}</div>
+      <div class="text-muted small">Emails Processed</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center py-3">
+      <div class="fs-2 fw-bold text-secondary">
+        {{ scans[0].scanned_at.strftime('%b %d') if scans else '—' }}
+      </div>
+      <div class="text-muted small">Last Scan</div>
+    </div>
+  </div>
+</div>
+
+<!-- Scan history -->
+<div class="card">
+  <div class="card-header bg-white fw-semibold">
+    <i class="bi bi-clock-history me-2"></i>Scan History
+  </div>
+  <div class="card-body p-0">
+    {% if scans %}
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Date &amp; Time</th>
+            <th>Status</th>
+            <th>Emails</th>
+            <th>URLs</th>
+            <th>PDFs</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for scan in scans %}
+          <tr>
+            <td class="text-nowrap">{{ scan.scanned_at.strftime('%b %d, %Y at %I:%M %p') }}</td>
+            <td>
+              {% if scan.status == 'success' %}
+                <span class="badge badge-status-success">Success</span>
+              {% elif scan.status == 'no_emails' %}
+                <span class="badge badge-status-no_emails">No Emails</span>
+              {% elif scan.status == 'error' %}
+                <span class="badge badge-status-error" title="{{ scan.error_message }}">Error</span>
+              {% else %}
+                <span class="badge bg-secondary">{{ scan.status }}</span>
+              {% endif %}
+            </td>
+            <td>{{ scan.emails_found or 0 }}</td>
+            <td>{{ scan.urls_fetched or 0 }}</td>
+            <td>{{ scan.pdfs_parsed or 0 }}</td>
+            <td>
+              {% if scan.summary %}
+              <a href="{{ url_for('view_scan', scan_id=scan.id) }}" class="btn btn-sm btn-outline-primary">
+                View Summary
+              </a>
+              {% elif scan.error_message %}
+              <span class="text-danger small">{{ scan.error_message[:60] }}...</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center py-5 text-muted">
+      <i class="bi bi-inbox" style="font-size: 2.5rem;"></i>
+      <p class="mt-2">No scans yet. Click <strong>Run Now</strong> to do your first scan.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
